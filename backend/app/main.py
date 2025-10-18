@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 from typing import Optional
 import os
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from .api.routes import (
     auth_router,
     evaluations_router,
@@ -14,9 +16,12 @@ from .api.routes import (
     history_router,
     playback_router,
 )
+from .api.deps import get_optional_user
+from .db.models import User
 from .dependencies import (
     get_queue_manager,
     get_worker,
+    get_db_session,
     initialize_dependencies,
     cleanup_dependencies,
     start_background_tasks,
@@ -175,11 +180,14 @@ async def get_track_suggestions(
     limit: Optional[int] = Query(
         None, ge=1, le=50, description="返却する楽曲数（1-50）"),
     excludeIds: Optional[str] = Query(None, description="除外する楽曲IDのカンマ区切り文字列"),
-    queue_manager: QueueManager = Depends(get_queue_manager)
+    queue_manager: QueueManager = Depends(get_queue_manager),
+    user: Optional[User] = Depends(get_optional_user),
+    session: AsyncSession = Depends(get_db_session),
 ) -> SuggestionsResponse:
     """楽曲提供APIエンドポイント
 
     キューから指定された数の楽曲を取得し、excludeIdsで指定された楽曲を除外して返す。
+    認証済みユーザーの場合、好みに基づいてパーソナライズされた楽曲を返す。
     必要に応じて補充ワーカーをトリガーする。
     """
     # レート制限チェック
@@ -223,6 +231,28 @@ async def get_track_suggestions(
             validated_limit,
             exclude_ids,
         )
+
+        # 認証済みユーザーの場合、パーソナライズを適用
+        if user and session:
+            try:
+                from .services.personalization import PersonalizationService
+                personalization_service = PersonalizationService(session)
+                
+                # 楽曲をパーソナライズ（より多く取得してからランク付け）
+                # 元のlimitより多く取得していれば、それをパーソナライズして返す
+                personalized_tracks = await personalization_service.personalize_tracks(
+                    response.data,
+                    user,
+                )
+                response.data = personalized_tracks
+                
+                logger.info(
+                    f"Applied personalization for user {user.id}, "
+                    f"delivered {len(response.data)} tracks"
+                )
+            except Exception as e:
+                logger.warning(f"Personalization failed for user {user.id}: {e}")
+                # パーソナライズ失敗時は元のレスポンスを返す
 
         return response
 

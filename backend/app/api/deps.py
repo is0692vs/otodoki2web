@@ -121,11 +121,32 @@ async def get_current_active_user(
     return await _get_user_from_token(raw_token, session)
 
 
+async def get_optional_user(
+    token: str | None = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_session),
+) -> User | None:
+    """Get current user if authenticated, otherwise return None.
+    
+    This dependency allows endpoints to optionally use user context
+    for personalization while remaining accessible to anonymous users.
+    """
+    if not token:
+        return None
+    
+    try:
+        return await _get_user_from_token(token, session)
+    except HTTPException:
+        # Token is invalid, but it's optional so return None
+        logger.debug("Optional user authentication failed, proceeding without user context")
+        return None
+
+
 __all__ = [
     "get_auth_service",
     "get_current_active_user",
     "get_current_user",
     "get_evaluation_service",
+    "get_optional_user",
     "get_play_history_service",
     "get_session",
 ]

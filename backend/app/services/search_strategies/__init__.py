@@ -5,14 +5,24 @@ import inspect
 from .base import BaseSearchStrategy
 
 
-def get_strategy(strategy_name: str) -> BaseSearchStrategy:
-    """指定された戦略名に基づいて戦略インスタンスを取得する。"""
+def get_strategy(strategy_name: str, **kwargs) -> BaseSearchStrategy:
+    """指定された戦略名に基づいて戦略インスタンスを取得する。
+    
+    Args:
+        strategy_name: 戦略名
+        **kwargs: 戦略クラスに渡す追加のキーワード引数（例: session, user_id）
+    """
 
     try:
         if strategy_name == "chart_keyword":
             from .chart_keyword import ChartKeywordSearchStrategy
 
             return ChartKeywordSearchStrategy()
+        
+        if strategy_name == "user_preference_search":
+            from .user_preference_search import UserPreferenceSearchStrategy
+            
+            return UserPreferenceSearchStrategy(**kwargs)
 
         module_path = f"app.services.search_strategies.{strategy_name}"
         strategy_module = importlib.import_module(module_path)

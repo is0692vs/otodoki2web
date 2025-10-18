@@ -20,6 +20,7 @@
 ### 🔧 技術ドキュメント
 
 - [WORKER_README.md](./WORKER_README.md) - iTunes API 非同期補充ワーカーのドキュメント
+- [PERSONALIZATION.md](./PERSONALIZATION.md) - 楽曲パーソナライゼーション機能のドキュメント
 - [API.md](./API.md) - API 仕様ドキュメント（予定）
 - [AUDIO_PREVIEW_IMPLEMENTATION.md](./AUDIO_PREVIEW_IMPLEMENTATION.md) - オーディオプレビュー実装ドキュメント
 - [mobile-implementation.md](./mobile-implementation.md) - モバイルアプリ実装ドキュメント
